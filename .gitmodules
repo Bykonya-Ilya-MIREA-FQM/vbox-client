@@ -1,0 +1,3 @@
+[submodule "src/external/vbox_server"]
+	path = src/external/vbox_server
+	url = https://github.com/Bykonya-Ilya-MIREA-FQM/vbox-server
