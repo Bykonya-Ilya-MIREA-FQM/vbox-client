@@ -1,3 +1,4 @@
+from csv import Error
 from internal.models.connection import Connection
 from internal.models.machine import Machine, MachineLoadProcessState, MachineLoadSuccessState, MachineLoadErrorState
 import internal.models.machine
@@ -113,13 +114,15 @@ class MachineView(PySide6.QtWidgets.QWidget):
         self.resetMachine()
 
     def resetMachine(self, machine: Machine | None = None) -> None:
-        if self.__machine == machine:
-            return
         if self.__machine is not None:
-            self.__machine.machine_state_changed.disconnect(self.__update_machine_view)
+            try:
+                self.__machine.machine_state_changed.disconnect(self.__update_machine_view)
+            except Exception:
+                pass
         self.__machine = machine
         if self.__machine is not None:
             self.__machine.machine_state_changed.connect(self.__update_machine_view)
+        self.__update_machine_view()
     def __update_machine_view(self) -> None:
         if self.__machine is None:
             self.__uuid_panel.setText(str(uuid.UUID(int = 0)))
