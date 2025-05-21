@@ -2,7 +2,7 @@ import pydantic
 from external.vbox_server.src.domain.machines.models import CreateMachineInfo
 from internal.views.utils.current_watching_list_view import CurrentWatchingListView
 from internal.views.utils.precise_slider import HorizontalPreciseSlider
-from internal.models.connection import Connection
+from internal.models.connection import Connection, ConnectionStateOnline
 from internal.models.machine import Machine
 import internal.models.machine
 import PySide6.QtWidgets
@@ -26,7 +26,6 @@ class CreateMachineDialog(PySide6.QtWidgets.QDialog):
         self.__reject_button = PySide6.QtWidgets.QPushButton('Cancel')
         self.__accept_button = PySide6.QtWidgets.QPushButton('Ok')
 
-        self.__template_edit.addItem('alpine-virt-3.21.3-x86_64')
         self.__os_type_edit.textChanged.connect(self.__validate_result)
         self.__template_edit.currentIndexChanged.connect(self.__validate_result)
         self.__drive_size_gb_edit.value_changed.connect(self.__validate_result)
@@ -65,8 +64,13 @@ class CreateMachineDialog(PySide6.QtWidgets.QDialog):
         lifespan_buttons_layout.addWidget(self.__accept_button)
         self.__layout.addLayout(lifespan_buttons_layout, 8, 0, 1, 2)
         self.setLayout(self.__layout)
-        self.__validate_result()
-    
+
+        
+        if isinstance(self.__connection.connection_state, ConnectionStateOnline):
+            self.__template_edit.addItems(self.__connection.connection_state.templates)
+            self.__validate_result()
+        else:
+            self.reject()
     def create_machine_info(self) -> CreateMachineInfo:
         return self.__result
     
@@ -132,7 +136,19 @@ class ConnectionView(PySide6.QtWidgets.QWidget):
         self.resetConnection()
 
     def resetConnection(self, connection: Connection | None = None) -> None:
+        if self.__list_view.model() is not None and isinstance(self.__list_view.model(), Connection):
+            self.__list_view.model().connection_state_changed.disconnect(self.__validate_connection_status)
         self.__list_view.setModel(connection)
+        if self.__list_view.model() is not None and isinstance(self.__list_view.model(), Connection):
+            self.__list_view.model().connection_state_changed.connect(self.__validate_connection_status)
+        self.__validate_connection_status()
+    def __validate_connection_status(self) -> None:
+        if self.__list_view.model() is None or not isinstance(self.__list_view.model(), Connection) or not isinstance(self.__list_view.model().connection_state, ConnectionStateOnline):
+            self.__create_machine_button.setEnabled(False)
+            self.__update_all_machine_button.setEnabled(False)
+        else:
+            self.__create_machine_button.setEnabled(True)
+            self.__update_all_machine_button.setEnabled(True)
 
     def __create_machine(self):
         if self.__list_view.model() is None:
@@ -152,7 +168,6 @@ class ConnectionView(PySide6.QtWidgets.QWidget):
             return
         if PySide6.QtWidgets.QMessageBox.question(self, 'Delete machine', 'Are you sure?') == PySide6.QtWidgets.QMessageBox.StandardButton.Yes:
             self.delete_machine_request.emit(self.__list_view.model(), machine)
-    
     def __show_list_item_menu(self, position: PySide6.QtCore.QPoint) -> None:
         item_index = self.__list_view.indexAt(position)
         if not item_index.isValid():

@@ -13,7 +13,7 @@ class ConnectionDestination(pydantic.BaseModel):
 class ConnectionStateError(pydantic.BaseModel):
     reason: str
 class ConnectionStateOnline(pydantic.BaseModel):
-    pass
+    templates: list[str]
 class ConnectionStateOffline(pydantic.BaseModel):
     pass
 ConnectionState = ConnectionStateError | ConnectionStateOnline | ConnectionStateOffline | None
